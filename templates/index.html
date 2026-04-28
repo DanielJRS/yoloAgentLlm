@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AgroVision AI</title>
+  <link rel="stylesheet" href="/static/dashboard.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>AgroVision AI</h1>
+    <div class="badges">
+      <span id="badge-camera" class="badge badge--off">câmera: --</span>
+      <span id="badge-ollama" class="badge badge--off">ollama: --</span>
+      <span id="badge-model" class="badge">modelo: --</span>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card card--video">
+      <h2>Câmera ao vivo</h2>
+      <div class="video-wrap">
+        <img id="video" src="/video_feed" alt="câmera ao vivo" />
+      </div>
+      <div class="metrics">
+        <span>frames: <strong id="m-frames">0</strong></span>
+        <span>eventos: <strong id="m-events">0</strong></span>
+        <span>fonte: <strong id="m-source">--</strong></span>
+      </div>
+    </section>
+
+    <section class="card card--events">
+      <h2>Eventos recentes</h2>
+      <ul id="events" class="events"></ul>
+    </section>
+
+    <section class="card card--chat">
+      <h2>Conversar com o agente</h2>
+      <div id="chat-log" class="chat-log"></div>
+      <form id="chat-form" class="chat-form">
+        <input
+          id="chat-input"
+          type="text"
+          placeholder="Pergunte algo sobre o que está sendo detectado..."
+          autocomplete="off"
+          required
+        />
+        <button type="submit">Enviar</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/static/dashboard.js" defer></script>
+</body>
+</html>

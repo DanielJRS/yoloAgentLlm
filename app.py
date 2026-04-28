@@ -1,0 +1,95 @@
+import asyncio
+from contextlib import asynccontextmanager
+from dataclasses import asdict
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from services.config import config
+from services.event_repository import init_db, list_recent
+from services.monitoring_agent import agent
+from services.ollama_client import ollama
+from services.schemas import AgentStatus, ChatRequest, ChatResponse
+from services.video_monitor import monitor
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    monitor.start()
+    try:
+        yield
+    finally:
+        monitor.stop()
+        await ollama.aclose()
+
+
+config.captures_dir.mkdir(parents=True, exist_ok=True)
+
+app = FastAPI(title="AgroVision AI", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=config.base_dir / "static"), name="static")
+templates = Jinja2Templates(directory=str(config.base_dir / "templates"))
+
+
+@app.get("/")
+def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/camera/status")
+def camera_status():
+    return monitor.status()
+
+
+@app.get("/events")
+def events():
+    return {"events": [asdict(e) for e in list_recent(limit=50)]}
+
+
+@app.get("/frame")
+def frame():
+    jpeg = monitor.latest_jpeg()
+    if jpeg is None:
+        return Response(status_code=503)
+    return Response(content=jpeg, media_type="image/jpeg")
+
+
+@app.get("/video_feed")
+def video_feed():
+    boundary = "frame"
+
+    async def gen():
+        while True:
+            jpeg = monitor.latest_jpeg()
+            if jpeg is not None:
+                yield (
+                    f"--{boundary}\r\n"
+                    "Content-Type: image/jpeg\r\n"
+                    f"Content-Length: {len(jpeg)}\r\n\r\n"
+                ).encode("ascii") + jpeg + b"\r\n"
+            await asyncio.sleep(0.1)
+
+    return StreamingResponse(
+        gen(), media_type=f"multipart/x-mixed-replace; boundary={boundary}"
+    )
+
+
+@app.get("/agent/status", response_model=AgentStatus)
+async def agent_status():
+    return await agent.status()
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(payload: ChatRequest):
+    text = payload.message.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="mensagem vazia")
+    reply = await agent.chat(text)
+    return ChatResponse(reply=reply)
