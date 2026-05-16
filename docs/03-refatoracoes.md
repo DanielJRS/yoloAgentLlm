@@ -177,12 +177,10 @@ Depois:
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
 
-    @field_validator("message")
-    @classmethod
+    @validator("message")
     def normalize_message(cls, value: str) -> str:
         normalized = value.strip()
         if not normalized:
             raise ValueError("mensagem vazia")
         return normalized
 ```
-

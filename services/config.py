@@ -23,11 +23,21 @@ class Config:
     models_dir: Path
     database_path: Path
     cors_origins: tuple[str, ...]
+    weather_latitude: float | None
+    weather_longitude: float | None
+    weather_ttl_minutes: int
+    weather_user_agent: str | None
+    weather_max_calls_per_hour: int
 
 
 def _int(name: str, default: int) -> int:
     raw = (os.getenv(name) or "").strip()
     return int(raw) if raw else default
+
+
+def _float(name: str) -> float | None:
+    raw = (os.getenv(name) or "").strip()
+    return float(raw) if raw else None
 
 
 def _csv(name: str) -> tuple[str, ...]:
@@ -52,6 +62,11 @@ def load_config() -> Config:
         models_dir=BASE_DIR / "models",
         database_path=BASE_DIR / "detections.db",
         cors_origins=_csv("CORS_ORIGINS"),
+        weather_latitude=_float("WEATHER_LATITUDE"),
+        weather_longitude=_float("WEATHER_LONGITUDE"),
+        weather_ttl_minutes=_int("WEATHER_TTL_MINUTES", 30),
+        weather_user_agent=(os.getenv("WEATHER_USER_AGENT") or "").strip() or None,
+        weather_max_calls_per_hour=_int("WEATHER_MAX_CALLS_PER_HOUR", 2),
     )
 
 

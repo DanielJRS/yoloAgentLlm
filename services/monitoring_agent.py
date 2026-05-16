@@ -4,6 +4,8 @@ from collections import deque
 from services.config import config
 from services.event_repository import Event, list_recent
 from services.ollama_client import OllamaError, ollama
+from services.schemas import WeatherSnapshot
+from services.weather_service import WeatherUnavailable, weather_service
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -31,18 +33,33 @@ class MonitoringAgent:
         self._memory: deque[dict] = deque(maxlen=SHORT_MEMORY_TURNS * 2)
         self._last_summary: str | None = None
 
-    def build_event_context(self, events: list[Event]) -> str:
+    def build_event_context(
+        self, events: list[Event], weather: WeatherSnapshot | None = None
+    ) -> str:
         if events:
             lines = [
                 f"- {e.event_time} | {e.label} (confiança {e.confidence:.2f})"
                 for e in events
             ]
-            return "Eventos recentes (mais novo primeiro):\n" + "\n".join(lines)
-        return "Eventos recentes: nenhum evento registrado até o momento."
+            events_block = "Eventos recentes (mais novo primeiro):\n" + "\n".join(lines)
+        else:
+            events_block = "Eventos recentes: nenhum evento registrado até o momento."
 
-    def _system_prompt(self, events: list[Event]) -> str:
+        if weather is None:
+            return f"{events_block}\n\nClima atual: nenhum snapshot disponivel."
+        weather_block = (
+            "Clima atual externo:\n"
+            f"- Fonte: {weather.source}; coletado em {weather.collected_at}; observado em {weather.observed_at}\n"
+            f"- Condicao: {weather.condition}; temperatura {weather.temperature_c:.1f}°C; "
+            f"umidade {weather.humidity_percent}%; vento {weather.wind_speed_kmh:.1f} km/h"
+        )
+        return f"{events_block}\n\n{weather_block}"
+
+    def _system_prompt(
+        self, events: list[Event], weather: WeatherSnapshot | None = None
+    ) -> str:
         rules_block = "\n".join(f"- {r}" for r in RULES)
-        events_block = self.build_event_context(events)
+        events_block = self.build_event_context(events, weather)
         return f"{PROFILE}\n\nRegras:\n{rules_block}\n\n{events_block}"
 
     @staticmethod
@@ -75,7 +92,13 @@ class MonitoringAgent:
 
     async def chat(self, user_message: str) -> str:
         events = list_recent(limit=config.agent_event_limit)
-        messages: list[dict] = [{"role": "system", "content": self._system_prompt(events)}]
+        try:
+            weather = await weather_service.get_snapshot()
+        except WeatherUnavailable:
+            weather = weather_service.latest_cached()
+        messages: list[dict] = [
+            {"role": "system", "content": self._system_prompt(events, weather)}
+        ]
         messages.extend(self._memory)
         messages.append({"role": "user", "content": self._trusted_user_message(user_message)})
 

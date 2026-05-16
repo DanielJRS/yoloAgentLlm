@@ -10,21 +10,26 @@ from fastapi.templating import Jinja2Templates
 
 from services.config import config
 from services.event_repository import init_db, list_recent
+from services.external_data_client import external_data_client
 from services.monitoring_agent import agent
 from services.ollama_client import ollama
 from services.schemas import AgentStatus, ChatRequest, ChatResponse
 from services.video_monitor import monitor
+from services.weather_repository import init_weather_db
+from services.weather_service import WeatherUnavailable, weather_service
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    init_weather_db()
     monitor.start()
     try:
         yield
     finally:
         monitor.stop()
         await ollama.aclose()
+        await external_data_client.aclose()
 
 
 config.captures_dir.mkdir(parents=True, exist_ok=True)
@@ -71,6 +76,15 @@ def camera_status():
 @app.get("/events")
 def events():
     return {"events": [asdict(e) for e in list_recent(limit=50)]}
+
+
+@app.get("/external/weather")
+async def external_weather():
+    try:
+        snapshot = await weather_service.get_snapshot()
+    except WeatherUnavailable as exc:
+        return {"available": False, "reason": str(exc), "snapshot": None}
+    return {"available": True, "snapshot": snapshot}
 
 
 @app.get("/frame")

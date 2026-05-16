@@ -70,6 +70,27 @@ async function refreshAgent() {
   }
 }
 
+async function refreshWeather() {
+  const box = $("#weather");
+  if (!box) return;
+  const main = box.querySelector(".weather-main");
+  const meta = box.querySelector(".weather-meta");
+  try {
+    const data = await fetchJSON("/external/weather");
+    if (!data.available || !data.snapshot) {
+      main.textContent = "--";
+      meta.textContent = data.reason || "sem snapshot disponivel";
+      return;
+    }
+    const w = data.snapshot;
+    main.textContent = `${Number(w.temperature_c).toFixed(1)}°C · ${w.condition}`;
+    meta.textContent = `umidade ${w.humidity_percent}% · vento ${Number(w.wind_speed_kmh).toFixed(1)} km/h · ${w.source}`;
+  } catch {
+    main.textContent = "--";
+    meta.textContent = "falha ao consultar clima";
+  }
+}
+
 function appendMsg(text, kind) {
   const log = $("#chat-log");
   const div = document.createElement("div");
@@ -105,5 +126,7 @@ $("#chat-form").addEventListener("submit", async (ev) => {
 
 refreshCamera();
 refreshAgent();
+refreshWeather();
 setInterval(refreshCamera, 2000);
 setInterval(refreshAgent, 5000);
+setInterval(refreshWeather, 10 * 60 * 1000);

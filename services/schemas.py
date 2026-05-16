@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 
 
 class EventOut(BaseModel):
@@ -26,11 +26,22 @@ class AgentStatus(BaseModel):
     last_summary: str | None = None
 
 
+class WeatherSnapshot(BaseModel):
+    temperature_c: float
+    humidity_percent: int
+    wind_speed_kmh: float
+    condition: str
+    observed_at: str
+    collected_at: str
+    source: str
+    latitude: float
+    longitude: float
+
+
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
 
-    @field_validator("message")
-    @classmethod
+    @validator("message")
     def normalize_message(cls, value: str) -> str:
         normalized = value.strip()
         if not normalized:

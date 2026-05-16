@@ -42,6 +42,7 @@ body {
   grid-template-columns: 2fr 1fr;
   grid-template-areas:
     "video events"
+    "weather events"
     "chat  events";
   gap: 1rem;
   padding: 1rem;
@@ -64,6 +65,7 @@ body {
 }
 
 .card--video  { grid-area: video; }
+.card--weather { grid-area: weather; }
 .card--events { grid-area: events; }
 .card--chat   { grid-area: chat; }
 
@@ -93,6 +95,25 @@ body {
 }
 
 .metrics strong { color: #e6e8eb; }
+
+.weather {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #aab3c0;
+}
+
+.weather-main {
+  color: #e6e8eb;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.weather-meta {
+  font-size: 0.85rem;
+  text-align: right;
+}
 
 .events {
   list-style: none;
@@ -178,6 +199,7 @@ body {
     grid-template-columns: 1fr;
     grid-template-areas:
       "video"
+      "weather"
       "events"
       "chat";
   }
