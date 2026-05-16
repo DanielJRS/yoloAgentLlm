@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+from urllib.parse import urlsplit, urlunsplit
 
 import cv2
 from ultralytics import YOLO
@@ -38,7 +39,7 @@ class VideoMonitor:
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._loop, daemon=True, name="video-monitor")
         self._thread.start()
-        logger.info("VideoMonitor started: source=%s", _short(config.camera_source))
+        logger.info("VideoMonitor started: source=%s", _safe_source_display(config.camera_source))
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -145,6 +146,18 @@ def _source_type(source: str) -> str:
 
 def _short(s: str, n: int = 60) -> str:
     return s if len(s) <= n else s[:n] + "..."
+
+
+def _safe_source_display(source: str) -> str:
+    if "://" not in source:
+        return _short(source)
+    parts = urlsplit(source)
+    host = parts.hostname or ""
+    if parts.port:
+        host = f"{host}:{parts.port}"
+    if parts.username or parts.password:
+        host = f"***:***@{host}"
+    return _short(urlunsplit((parts.scheme, host, parts.path, "", "")))
 
 
 monitor = VideoMonitor()

@@ -32,11 +32,16 @@ function renderEvents(list) {
     }
     const meta = document.createElement("div");
     meta.className = "e-meta";
-    meta.innerHTML = `
-      <div class="e-label">${e.label}</div>
-      <div class="e-time">${e.event_time}</div>
-      <div class="e-conf">conf ${Number(e.confidence).toFixed(2)}</div>
-    `;
+    const label = document.createElement("div");
+    label.className = "e-label";
+    label.textContent = e.label;
+    const time = document.createElement("div");
+    time.className = "e-time";
+    time.textContent = e.event_time;
+    const conf = document.createElement("div");
+    conf.className = "e-conf";
+    conf.textContent = `conf ${Number(e.confidence).toFixed(2)}`;
+    meta.append(label, time, conf);
     li.appendChild(meta);
     ul.appendChild(li);
   }

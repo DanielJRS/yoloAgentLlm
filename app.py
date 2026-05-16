@@ -2,7 +2,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -29,6 +30,25 @@ async def lifespan(app: FastAPI):
 config.captures_dir.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="AgroVision AI", lifespan=lifespan)
+if config.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(config.cors_origins),
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
+    )
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    return response
+
+
 app.mount("/static", StaticFiles(directory=config.base_dir / "static"), name="static")
 templates = Jinja2Templates(directory=str(config.base_dir / "templates"))
 
@@ -88,8 +108,5 @@ async def agent_status():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(payload: ChatRequest):
-    text = payload.message.strip()
-    if not text:
-        raise HTTPException(status_code=400, detail="mensagem vazia")
-    reply = await agent.chat(text)
+    reply = await agent.chat(payload.message)
     return ChatResponse(reply=reply)

@@ -22,11 +22,19 @@ class Config:
     captures_dir: Path
     models_dir: Path
     database_path: Path
+    cors_origins: tuple[str, ...]
 
 
 def _int(name: str, default: int) -> int:
     raw = (os.getenv(name) or "").strip()
     return int(raw) if raw else default
+
+
+def _csv(name: str) -> tuple[str, ...]:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return ()
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
 
 
 def load_config() -> Config:
@@ -43,6 +51,7 @@ def load_config() -> Config:
         captures_dir=BASE_DIR / "static" / "captures",
         models_dir=BASE_DIR / "models",
         database_path=BASE_DIR / "detections.db",
+        cors_origins=_csv("CORS_ORIGINS"),
     )
 
 
